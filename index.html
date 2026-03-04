@@ -3,26 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 出貨小助手 - 活潑版</title>
+    <title>📦 出貨小助手 - 完整強化版</title>
     <style>
-        :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --dark: #202124; --bg: #f0f4f8; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); padding: 10px; margin: 0; color: #3c4043; }
+        :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --purple: #a142f4; --dark: #202124; --bg: #f0f4f8; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 10px; margin: 0; color: #3c4043; }
         .container { max-width: 600px; margin: auto; }
         
-        /* 首頁標題與搜尋區 */
         .header { text-align: center; padding: 20px 0 10px 0; }
         .header h1 { font-size: 24px; color: var(--blue); margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .header p { font-size: 14px; color: #666; margin: 5px 0 15px 0; }
 
         .search-card { position: sticky; top: 10px; background: white; padding: 18px; border-radius: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 100; border: 2px solid #e0e6ed; }
-        input { width: 100%; padding: 14px 20px; border: none; background: #f8f9fa; border-radius: 15px; font-size: 17px; box-sizing: border-box; outline: none; transition: 0.3s; }
-        input:focus { background: white; box-shadow: inset 0 0 0 2px var(--blue); }
+        input { width: 100%; padding: 14px 20px; border: none; background: #f8f9fa; border-radius: 15px; font-size: 17px; box-sizing: border-box; outline: none; }
 
-        /* 空白狀態提示 */
         .empty-state { text-align: center; padding: 50px 20px; color: #99aab5; }
         .empty-state .emoji { font-size: 60px; display: block; margin-bottom: 10px; }
 
-        /* 分組卡片 */
         .group-card { background: white; margin-top: 20px; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-left: 12px solid; animation: slideUp 0.4s ease; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -39,14 +35,14 @@
         
         .item-title { font-size: 20px; font-weight: 800; color: #1a202c; display: block; margin-bottom: 12px; }
         
-        /* 店家排列 */
         .shop-list-container { display: flex; flex-wrap: wrap; gap: 10px; }
         .shop-item { background: #edf2f7; padding: 10px 14px; border-radius: 12px; font-size: 17px; color: #2d3748; border: 1px solid #e2e8f0; }
         .shop-item b { font-size: 26px; color: var(--red); margin-left: 5px; font-family: 'Arial Black', sans-serif; }
-
-        /* 右側總數 */
-        .qty-cell { text-align: right; font-weight: 900; font-size: 36px; color: var(--blue); width: 85px; padding-top: 25px !important; text-shadow: 1px 1px 0px #fff; }
         
+        /* 特別標註 K 和 L 欄位的樣式 */
+        .special-item { background: #fff5f5; border: 1px solid var(--red); color: var(--red); }
+
+        .qty-cell { text-align: right; font-weight: 900; font-size: 36px; color: var(--blue); width: 85px; padding-top: 25px !important; }
         .note-tag { font-size: 14px; color: white; background: var(--red); padding: 6px 12px; border-radius: 8px; display: inline-block; margin-top: 15px; font-weight: 700; }
     </style>
 </head>
@@ -54,7 +50,7 @@
 <div class="container">
     <div class="header">
         <h1>📦 出貨快速查詢系統</h1>
-        <p>快速核對店家數量，出貨不再亂糟糟 ✨</p>
+        <p>多廠商、叫貨、多餘數量一次看 ✨</p>
     </div>
 
     <div class="search-card">
@@ -72,7 +68,11 @@
 <script>
     const SHEET_ID = '2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0'; 
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=0`;
-    const SHOP_MAP = { "中港": 3, "小米妮": 4, "北冰": 5, "小賴": 6, "安星": 7 };
+    
+    // 欄位定義：D(3), E(4), F(5), G(6), H(7), I(8)
+    const SHOP_MAP = { "中港": 3, "小米妮": 4, "北冰": 5, "小賴": 6, "安星": 7, "新廠商": 8 };
+    // 額外顯示欄位：K 叫貨(10), L 多(11)
+    const EXTRA_MAP = { "叫貨": 10, "多": 11 };
 
     let timer = null;
     function debounceSearch() { clearTimeout(timer); timer = setTimeout(fetchData, 300); }
@@ -80,10 +80,7 @@
     async function fetchData() {
         const query = document.getElementById('searchInput').value.trim();
         const area = document.getElementById('displayArea');
-        if (!query) { 
-            area.innerHTML = `<div class="empty-state"><span class="emoji">🕵️‍♂️</span><p>準備好了！請輸入關鍵字開始查詢</p></div>`;
-            return; 
-        }
+        if (!query) { area.innerHTML = `<div class="empty-state"><span class="emoji">🕵️‍♂️</span><p>準備好了！請輸入關鍵字開始查詢</p></div>`; return; }
         try {
             const resp = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
             const csv = await resp.text();
@@ -104,8 +101,8 @@
 
         matches.forEach(row => {
             const name = row[0].replace(/"/g, '');
-            const ruleStr = (row[11] || "").replace(/"/g, '').trim(); 
-            const note = (row[12] || "").replace(/"/g, '').trim();
+            const ruleStr = (row[12] || "").replace(/"/g, '').trim(); // M 欄(12) 分組規則
+            const note = (row[13] || "").replace(/"/g, '').trim();    // N 欄(13) 備註
             const rules = ruleStr === "" ? ["全部"] : ruleStr.split('/').map(r => r.trim());
             let used = new Set();
 
@@ -113,27 +110,33 @@
                 let sub = 0, detailHtmlArr = [];
                 const isAll = rName === "全部";
                 
-                if (isAll) {
-                    for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
+                // 處理主要店家廠商
+                for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
+                    if (isAll || rName.split('+').some(t => sName.includes(t.trim()))) {
                         let v = parseInt(row[sIdx]) || 0;
-                        if (v !== 0) { detailHtmlArr.push(`<div class="shop-item">🏠 ${sName}<b>${v}</b></div>`); sub += v; }
-                    }
-                } else {
-                    const targets = rName.split('+').map(t => t.trim());
-                    for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
-                        if (targets.some(t => sName.includes(t))) {
-                            let v = parseInt(row[sIdx]) || 0;
-                            if (v !== 0) { detailHtmlArr.push(`<div class="shop-item">🏠 ${sName}<b>${v}</b></div>`); sub += v; }
-                            used.add(sName);
+                        if (v !== 0) { 
+                            detailHtmlArr.push(`<div class="shop-item">🏠 ${sName}<b>${v}</b></div>`); 
+                            sub += v; 
+                            if(!isAll) used.add(sName);
                         }
                     }
                 }
-                if (sub !== 0) {
+
+                // 只有在顯示時，檢查是否要顯示 K(叫貨) 和 L(多)
+                for (const [eName, eIdx] of Object.entries(EXTRA_MAP)) {
+                    let ev = parseInt(row[eIdx]) || 0;
+                    if (ev !== 0 && isAll) { // 這裡設定在「全部」分組或符合條件時顯示
+                        detailHtmlArr.push(`<div class="shop-item special-item">📌 ${eName}<b>${ev}</b></div>`);
+                    }
+                }
+
+                if (sub !== 0 || detailHtmlArr.length > 0) {
                     if (!finalGroups[rName]) finalGroups[rName] = { idx, items: [] };
                     finalGroups[rName].items.push({ name, sub, detail: detailHtmlArr.join(' '), note });
                 }
             });
 
+            // 處理其餘未分配店家
             if (ruleStr !== "") {
                 let oSum = 0, oDetailHtml = [];
                 for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
@@ -154,13 +157,11 @@
             const total = data.items.reduce((s, i) => s + i.sub, 0);
             let html = `<div class="group-card ${colorClass}"><div class="group-header"><span>📍 ${gName} 分組</span><span class="total-badge">🔢 累計 ${total}</span></div><table>`;
             data.items.forEach(item => {
-                html += `<tr><td><span class="item-title">🔹 ${item.name}</span><div class="shop-list-container">${item.detail}</div>${item.note && item.note !== "備註" ? `<span class="note-tag">📝 備註：${item.note}</span>` : ''}</td><td class="qty-cell">${item.sub}</td></tr>`;
+                html += `<tr><td><span class="item-title">🔹 ${item.name}</span><div class="shop-list-container">${item.detail}</div>${item.note && item.note !== "備註" ? `<span class="note-tag">📝 備註：${item.note}</span>` : ''}</td><td class="qty-cell">${item.sub || ''}</td></tr>`;
             });
             area.innerHTML += html + "</table></div>";
         }
     }
 </script>
-</body>
-</html>
 </body>
 </html>
