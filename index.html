@@ -3,69 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>出貨查詢-明細強化版</title>
+    <title>📦 出貨小助手 - 活潑版</title>
     <style>
-        :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --dark: #202124; }
-        body { font-family: -apple-system, sans-serif; background: #f1f3f4; padding: 10px; margin: 0; color: #3c4043; }
+        :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --dark: #202124; --bg: #f0f4f8; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); padding: 10px; margin: 0; color: #3c4043; }
         .container { max-width: 600px; margin: auto; }
         
-        .search-card { position: sticky; top: 10px; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 100; }
-        input { width: 100%; padding: 14px; border: 1px solid #eee; border-radius: 12px; font-size: 16px; box-sizing: border-box; outline: none; }
+        /* 首頁標題與搜尋區 */
+        .header { text-align: center; padding: 20px 0 10px 0; }
+        .header h1 { font-size: 24px; color: var(--blue); margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .header p { font-size: 14px; color: #666; margin: 5px 0 15px 0; }
 
-        .group-card { background: white; margin-top: 15px; border-radius: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 10px solid; }
+        .search-card { position: sticky; top: 10px; background: white; padding: 18px; border-radius: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 100; border: 2px solid #e0e6ed; }
+        input { width: 100%; padding: 14px 20px; border: none; background: #f8f9fa; border-radius: 15px; font-size: 17px; box-sizing: border-box; outline: none; transition: 0.3s; }
+        input:focus { background: white; box-shadow: inset 0 0 0 2px var(--blue); }
+
+        /* 空白狀態提示 */
+        .empty-state { text-align: center; padding: 50px 20px; color: #99aab5; }
+        .empty-state .emoji { font-size: 60px; display: block; margin-bottom: 10px; }
+
+        /* 分組卡片 */
+        .group-card { background: white; margin-top: 20px; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-left: 12px solid; animation: slideUp 0.4s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
         .c-0 { border-color: var(--blue); }
         .c-1 { border-color: var(--green); }
         .c-2 { border-color: var(--orange); }
         .c-none { border-color: #bdc1c6; }
 
-        .group-header { padding: 12px 15px; font-weight: bold; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
-        .total-badge { background: var(--red); color: white; padding: 4px 12px; border-radius: 20px; font-size: 16px; font-weight: 800; }
+        .group-header { padding: 15px 20px; font-weight: 800; background: #fafbfc; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edf2f7; }
+        .total-badge { background: var(--red); color: white; padding: 5px 15px; border-radius: 25px; font-size: 16px; font-weight: 900; box-shadow: 0 4px 8px rgba(234, 67, 53, 0.3); }
         
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 15px; border-bottom: 1px solid #f8f9fa; vertical-align: top; }
+        td { padding: 20px; border-bottom: 1px solid #f1f3f4; vertical-align: top; }
         
-        /* 品項名稱加粗 */
-        .item-title { font-size: 19px; font-weight: 800; color: #000; display: block; margin-bottom: 12px; }
+        .item-title { font-size: 20px; font-weight: 800; color: #1a202c; display: block; margin-bottom: 12px; }
         
-        /* 店家詳細數量區域 - 改為排列式顯示 */
-        .shop-list-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; }
-        .shop-item { 
-            background: #f0f2f5; 
-            padding: 8px 12px; 
-            border-radius: 8px; 
-            font-size: 17px; /* 文字放大 */
-            color: #333; 
-            border: 1px solid #dee2e6;
-            display: inline-block;
-        }
-        .shop-item b { 
-            font-size: 24px; /* 數字特大 */
-            color: #d93025; /* 數字改為紅色更明顯 */
-            margin-left: 4px;
-        }
+        /* 店家排列 */
+        .shop-list-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        .shop-item { background: #edf2f7; padding: 10px 14px; border-radius: 12px; font-size: 17px; color: #2d3748; border: 1px solid #e2e8f0; }
+        .shop-item b { font-size: 26px; color: var(--red); margin-left: 5px; font-family: 'Arial Black', sans-serif; }
 
-        /* 右側總出貨數量 */
-        .qty-cell { text-align: right; font-weight: 900; font-size: 32px; color: var(--blue); width: 80px; padding-top: 20px !important; }
+        /* 右側總數 */
+        .qty-cell { text-align: right; font-weight: 900; font-size: 36px; color: var(--blue); width: 85px; padding-top: 25px !important; text-shadow: 1px 1px 0px #fff; }
         
-        /* 警示備註標籤 */
-        .note-tag { 
-            font-size: 14px; 
-            color: var(--red); 
-            background: #fff1f0; 
-            padding: 6px 10px; 
-            border-radius: 6px; 
-            display: inline-block; 
-            margin-top: 12px; 
-            border: 1px solid #ffccc7; 
-            font-weight: 700;
-        }
+        .note-tag { font-size: 14px; color: white; background: var(--red); padding: 6px 12px; border-radius: 8px; display: inline-block; margin-top: 15px; font-weight: 700; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="search-card"><input type="text" id="searchInput" placeholder="搜尋品項關鍵字..." oninput="debounceSearch()"></div>
-    <div id="displayArea"></div>
+    <div class="header">
+        <h1>📦 出貨快速查詢系統</h1>
+        <p>快速核對店家數量，出貨不再亂糟糟 ✨</p>
+    </div>
+
+    <div class="search-card">
+        <input type="text" id="searchInput" placeholder="🔍 請輸入關鍵字 (如：網市)..." oninput="debounceSearch()">
+    </div>
+
+    <div id="displayArea">
+        <div class="empty-state">
+            <span class="emoji">🕵️‍♂️</span>
+            <p>準備好了！請輸入關鍵字開始查詢</p>
+        </div>
+    </div>
 </div>
+
 <script>
     const SHEET_ID = '2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0'; 
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=0`;
@@ -77,13 +80,19 @@
     async function fetchData() {
         const query = document.getElementById('searchInput').value.trim();
         const area = document.getElementById('displayArea');
-        if (!query) { area.innerHTML = ""; return; }
+        if (!query) { 
+            area.innerHTML = `<div class="empty-state"><span class="emoji">🕵️‍♂️</span><p>準備好了！請輸入關鍵字開始查詢</p></div>`;
+            return; 
+        }
         try {
             const resp = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
             const csv = await resp.text();
             const rows = csv.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
             const filtered = rows.filter(r => r[0] && r[0].replace(/"/g, '').includes(query));
-            if (filtered.length === 0) { area.innerHTML = "<div style='text-align:center;padding:30px;color:#999;'>查無品項</div>"; return; }
+            if (filtered.length === 0) { 
+                area.innerHTML = `<div class="empty-state"><span class="emoji">😅</span><p>喔不！找不到相關品項...</p></div>`;
+                return; 
+            }
             renderGroups(filtered);
         } catch (e) { console.error(e); }
     }
@@ -102,23 +111,19 @@
 
             rules.forEach((rName, idx) => {
                 let sub = 0, detailHtmlArr = [];
-                if (rName === "全部") {
+                const isAll = rName === "全部";
+                
+                if (isAll) {
                     for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
                         let v = parseInt(row[sIdx]) || 0;
-                        if (v !== 0) { 
-                            detailHtmlArr.push(`<div class="shop-item">${sName}<b>${v}</b></div>`); 
-                            sub += v; 
-                        }
+                        if (v !== 0) { detailHtmlArr.push(`<div class="shop-item">🏠 ${sName}<b>${v}</b></div>`); sub += v; }
                     }
                 } else {
                     const targets = rName.split('+').map(t => t.trim());
                     for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
                         if (targets.some(t => sName.includes(t))) {
                             let v = parseInt(row[sIdx]) || 0;
-                            if (v !== 0) { 
-                                detailHtmlArr.push(`<div class="shop-item">${sName}<b>${v}</b></div>`); 
-                                sub += v; 
-                            }
+                            if (v !== 0) { detailHtmlArr.push(`<div class="shop-item">🏠 ${sName}<b>${v}</b></div>`); sub += v; }
                             used.add(sName);
                         }
                     }
@@ -134,10 +139,7 @@
                 for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
                     if (!used.has(sName)) {
                         let v = parseInt(row[sIdx]) || 0;
-                        if (v !== 0) { 
-                            oDetailHtml.push(`<div class="shop-item">${sName}<b>${v}</b></div>`); 
-                            oSum += v; 
-                        }
+                        if (v !== 0) { oDetailHtml.push(`<div class="shop-item">🏠 ${sName}<b>${v}</b></div>`); oSum += v; }
                     }
                 }
                 if (oSum !== 0) {
@@ -150,13 +152,15 @@
         for (const [gName, data] of Object.entries(finalGroups)) {
             const colorClass = (gName === "其他" || gName === "全部") ? "c-none" : `c-${data.idx % 3}`;
             const total = data.items.reduce((s, i) => s + i.sub, 0);
-            let html = `<div class="group-card ${colorClass}"><div class="group-header"><span>📍 ${gName}</span><span class="total-badge">共 ${total} 包</span></div><table>`;
+            let html = `<div class="group-card ${colorClass}"><div class="group-header"><span>📍 ${gName} 分組</span><span class="total-badge">🔢 累計 ${total}</span></div><table>`;
             data.items.forEach(item => {
-                html += `<tr><td><span class="item-title">${item.name}</span><div class="shop-list-container">${item.detail}</div>${item.note && item.note !== "備註" ? `<span class="note-tag">⚠️ ${item.note}</span>` : ''}</td><td class="qty-cell">${item.sub}</td></tr>`;
+                html += `<tr><td><span class="item-title">🔹 ${item.name}</span><div class="shop-list-container">${item.detail}</div>${item.note && item.note !== "備註" ? `<span class="note-tag">📝 備註：${item.note}</span>` : ''}</td><td class="qty-cell">${item.sub}</td></tr>`;
             });
             area.innerHTML += html + "</table></div>";
         }
     }
 </script>
+</body>
+</html>
 </body>
 </html>
