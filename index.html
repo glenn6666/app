@@ -3,25 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>出貨查詢-智能分組版</title>
+    <title>出貨查詢-字體強化版</title>
     <style>
         :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --dark: #202124; }
         body { font-family: -apple-system, sans-serif; background: #f1f3f4; padding: 10px; margin: 0; color: #3c4043; }
         .container { max-width: 600px; margin: auto; }
+        
         .search-card { position: sticky; top: 10px; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 100; }
         input { width: 100%; padding: 14px; border: 1px solid #eee; border-radius: 12px; font-size: 16px; box-sizing: border-box; outline: none; }
-        .group-card { background: white; margin-top: 15px; border-radius: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 8px solid; }
+
+        .group-card { background: white; margin-top: 15px; border-radius: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 10px solid; }
         .c-0 { border-color: var(--blue); }
         .c-1 { border-color: var(--green); }
         .c-2 { border-color: var(--orange); }
         .c-none { border-color: #bdc1c6; }
+
         .group-header { padding: 12px 15px; font-weight: bold; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
-        .total-badge { background: var(--red); color: white; padding: 2px 10px; border-radius: 20px; font-size: 14px; }
+        .total-badge { background: var(--red); color: white; padding: 4px 12px; border-radius: 20px; font-size: 16px; font-weight: 800; }
+        
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 12px 15px; border-bottom: 1px solid #f8f9fa; font-size: 16px; }
-        .qty-cell { text-align: right; font-weight: 800; font-size: 20px; color: var(--blue); width: 60px; }
-        .shop-info { font-size: 12px; color: #70757a; display: block; margin-top: 3px; }
-        .note-tag { font-size: 12px; color: var(--red); background: #fff1f0; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 5px; border: 1px solid #ffccc7; }
+        td { padding: 15px; border-bottom: 1px solid #f8f9fa; vertical-align: middle; }
+        
+        /* 品項名稱 */
+        .item-title { font-size: 18px; font-weight: 700; color: #000; display: block; margin-bottom: 8px; }
+        
+        /* 店家詳細數量 - 這裡特別加大 */
+        .shop-detail-box { font-size: 16px; color: #444; background: #f0f2f5; padding: 6px 10px; border-radius: 6px; display: inline-block; line-height: 1.5; }
+        .shop-detail-box b { font-size: 20px; color: #000; margin: 0 2px; } /* 加大括號內的數字 */
+        
+        /* 右側大總數 */
+        .qty-cell { text-align: right; font-weight: 900; font-size: 26px; color: var(--blue); width: 70px; }
+        
+        .note-tag { font-size: 13px; color: var(--red); background: #fff1f0; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 8px; border: 1px solid #ffccc7; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -60,44 +73,38 @@
             const name = row[0].replace(/"/g, '');
             const ruleStr = (row[11] || "").replace(/"/g, '').trim(); 
             const note = (row[12] || "").replace(/"/g, '').trim();
-            
-            // 如果 L 欄是空的，建立一個「全部」的虛擬規則
             const rules = ruleStr === "" ? ["全部"] : ruleStr.split('/').map(r => r.trim());
             let used = new Set();
 
             rules.forEach((rName, idx) => {
-                let sub = 0, detail = [];
-                
+                let sub = 0, detailArr = [];
                 if (rName === "全部") {
-                    // 全部店家加總
                     for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
-                        let v = parseInt(row[sIdx]) || 0; // 缺少或非數字視為 0
-                        if (v !== 0) { detail.push(`${sName}(${v})`); sub += v; }
+                        let v = parseInt(row[sIdx]) || 0;
+                        if (v !== 0) { detailArr.push(`${sName}(<b>${v}</b>)`); sub += v; }
                     }
                 } else {
                     const targets = rName.split('+').map(t => t.trim());
                     for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
                         if (targets.some(t => sName.includes(t))) {
                             let v = parseInt(row[sIdx]) || 0;
-                            if (v !== 0) { detail.push(`${sName}(${v})`); sub += v; }
+                            if (v !== 0) { detailArr.push(`${sName}(<b>${v}</b>)`); sub += v; }
                             used.add(sName);
                         }
                     }
                 }
-
                 if (sub !== 0) {
                     if (!finalGroups[rName]) finalGroups[rName] = { idx, items: [] };
-                    finalGroups[rName].items.push({ name, sub, detail: detail.join(' '), note });
+                    finalGroups[rName].items.push({ name, sub, detail: detailArr.join(' '), note });
                 }
             });
 
-            // 如果有規則，處理沒被分配到的剩餘店家
             if (ruleStr !== "") {
                 let oSum = 0, oDetail = [];
                 for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
                     if (!used.has(sName)) {
                         let v = parseInt(row[sIdx]) || 0;
-                        if (v !== 0) { oDetail.push(`${sName}(${v})`); oSum += v; }
+                        if (v !== 0) { oDetail.push(`${sName}(<b>${v}</b>)`); oSum += v; }
                     }
                 }
                 if (oSum !== 0) {
@@ -112,7 +119,7 @@
             const total = data.items.reduce((s, i) => s + i.sub, 0);
             let html = `<div class="group-card ${colorClass}"><div class="group-header"><span>📍 ${gName}</span><span class="total-badge">共 ${total} 包</span></div><table>`;
             data.items.forEach(item => {
-                html += `<tr><td><strong>${item.name}</strong><span class="shop-info">${item.detail}</span>${item.note && item.note !== "備註" ? `<span class="note-tag">⚠️ ${item.note}</span>` : ''}</td><td class="qty-cell">${item.sub}</td></tr>`;
+                html += `<tr><td><span class="item-title">${item.name}</span><div class="shop-detail-box">${item.detail}</div><br>${item.note && item.note !== "備註" ? `<span class="note-tag">⚠️ ${item.note}</span>` : ''}</td><td class="qty-cell">${item.sub}</td></tr>`;
             });
             area.innerHTML += html + "</table></div>";
         }
