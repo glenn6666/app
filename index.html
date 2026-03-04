@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出貨查詢 App</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f9; padding: 15px; }
+        .container { max-width: 480px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #07c160; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .group-box { margin-top: 15px; padding: 15px; border-radius: 10px; border-left: 5px solid #07c160; background: #f9f9f9; }
+        .row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 style="text-align:center">📋 出貨快速查詢</h2>
+    <input type="text" id="searchName" placeholder="輸入品項名稱...">
+    <button onclick="fetchData()">搜尋雲端資料</button>
+    <div id="resultArea" style="display:none; margin-top:20px;">
+        <h3 id="displayTitle"></h3>
+        <div id="groupsContainer"></div>
+    </div>
+</div>
+<script>
+    const SHEET_ID = '2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0'; 
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+    async function fetchData() {
+        const target = document.getElementById('searchName').value.trim();
+        if(!target) return;
+        try {
+            const resp = await fetch(SHEET_URL);
+            const text = await resp.text();
+            const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+            const row = json.table.rows.find(r => r.c[1] && r.c[1].v.includes(target));
+            if (row) {
+                document.getElementById('displayTitle').innerText = row.c[1].v;
+                document.getElementById('groupsContainer').innerHTML = `<div class="group-box">${row.c[2].v}</div>`;
+                document.getElementById('resultArea').style.display = 'block';
+            } else { alert("找不到品項"); }
+        } catch (e) { alert("讀取失敗，請確認網路"); }
+    }
+</script>
+</body>
+</html>
