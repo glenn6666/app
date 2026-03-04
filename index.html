@@ -3,165 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>出貨查詢-分組強化版</title>
+    <title>出貨查詢-智能分組版</title>
     <style>
-        :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --purple: #a142f4; --dark: #202124; }
+        :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --dark: #202124; }
         body { font-family: -apple-system, sans-serif; background: #f1f3f4; padding: 10px; margin: 0; color: #3c4043; }
         .container { max-width: 600px; margin: auto; }
-        
-        .search-wrapper { position: sticky; top: 0; background: #f1f3f4; padding: 10px 0; z-index: 100; }
-        input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 25px; font-size: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); outline: none; transition: 0.3s; }
-        input:focus { border-color: var(--blue); box-shadow: 0 2px 10px rgba(26,115,232,0.2); }
-
-        /* 分組卡片樣式：根據 index 切換顏色 */
-        .group-card { background: white; margin-bottom: 20px; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-left: 8px solid; }
-        
-        /* 顏色區別邏輯 */
-        .color-0 { border-color: var(--blue); }
-        .color-1 { border-color: var(--green); }
-        .color-2 { border-color: var(--orange); }
-        .color-3 { border-color: var(--purple); }
-        .color-other { border-color: #bdc1c6; }
-
-        .group-header { padding: 12px 15px; font-weight: 800; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 18px; }
+        .search-card { position: sticky; top: 10px; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 100; }
+        input { width: 100%; padding: 14px; border: 1px solid #eee; border-radius: 12px; font-size: 16px; box-sizing: border-box; outline: none; }
+        .group-card { background: white; margin-top: 15px; border-radius: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 8px solid; }
+        .c-0 { border-color: var(--blue); }
+        .c-1 { border-color: var(--green); }
+        .c-2 { border-color: var(--orange); }
+        .c-none { border-color: #bdc1c6; }
+        .group-header { padding: 12px 15px; font-weight: bold; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
         .total-badge { background: var(--red); color: white; padding: 2px 10px; border-radius: 20px; font-size: 14px; }
-        
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 15px; border-bottom: 1px solid #f1f3f4; font-size: 16px; vertical-align: top; }
-        .item-name { font-weight: bold; color: var(--dark); display: block; margin-bottom: 4px; }
-        .qty-cell { text-align: right; font-weight: 900; width: 60px; font-size: 20px; color: var(--blue); }
-        
-        .shop-detail { font-size: 12px; color: #70757a; background: #f1f3f4; padding: 2px 6px; border-radius: 4px; display: inline-block; }
-        .note-tag { font-size: 12px; color: var(--red); background: #fff1f0; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffccc7; display: block; margin-top: 6px; }
+        td { padding: 12px 15px; border-bottom: 1px solid #f8f9fa; font-size: 16px; }
+        .qty-cell { text-align: right; font-weight: 800; font-size: 20px; color: var(--blue); width: 60px; }
+        .shop-info { font-size: 12px; color: #70757a; display: block; margin-top: 3px; }
+        .note-tag { font-size: 12px; color: var(--red); background: #fff1f0; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 5px; border: 1px solid #ffccc7; }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <div class="search-wrapper">
-        <input type="text" id="searchInput" placeholder="輸入關鍵字 (例如: 網市)..." oninput="debounceSearch()">
-    </div>
+    <div class="search-card"><input type="text" id="searchInput" placeholder="搜尋品項關鍵字..." oninput="debounceSearch()"></div>
     <div id="displayArea"></div>
 </div>
-
 <script>
     const SHEET_ID = '2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0'; 
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=0`;
+    const SHOP_MAP = { "中港": 3, "小米妮": 4, "北冰": 5, "小賴": 6, "安星": 7 };
 
-    // 依照你的 A-M 欄位對應
-    // A:0, B:1, C:2, D:3(中港), E:4(小米妮), F:5(北冰), G:6(小賴), H:7(安星), L:11(規則), M:12(備註)
-    const SHOP_INDEX = { "中港": 3, "小米妮": 4, "北冰": 5, "小賴": 6, "安星": 7 };
+    let timer = null;
+    function debounceSearch() { clearTimeout(timer); timer = setTimeout(fetchData, 300); }
 
-    let timeout = null;
-    function debounceSearch() {
-        clearTimeout(timeout);
-        timeout = setTimeout(fetchAndRender, 300);
-    }
-
-    async function fetchAndRender() {
+    async function fetchData() {
         const query = document.getElementById('searchInput').value.trim();
         const area = document.getElementById('displayArea');
         if (!query) { area.innerHTML = ""; return; }
-
         try {
             const resp = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
-            const data = await resp.text();
-            const rows = data.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-
-            // A 欄是索引 0
+            const csv = await resp.text();
+            const rows = csv.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
             const filtered = rows.filter(r => r[0] && r[0].replace(/"/g, '').includes(query));
+            if (filtered.length === 0) { area.innerHTML = "<div style='text-align:center;padding:30px;color:#999;'>查無品項</div>"; return; }
+            renderGroups(filtered);
+        } catch (e) { console.error(e); }
+    }
+
+    function renderGroups(matches) {
+        const area = document.getElementById('displayArea');
+        area.innerHTML = "";
+        const finalGroups = {};
+
+        matches.forEach(row => {
+            const name = row[0].replace(/"/g, '');
+            const ruleStr = (row[11] || "").replace(/"/g, '').trim(); 
+            const note = (row[12] || "").replace(/"/g, '').trim();
             
-            if (filtered.length === 0) {
-                area.innerHTML = "<div style='text-align:center; margin-top:20px;'>找不到品項</div>";
-                return;
-            }
+            // 如果 L 欄是空的，建立一個「全部」的虛擬規則
+            const rules = ruleStr === "" ? ["全部"] : ruleStr.split('/').map(r => r.trim());
+            let used = new Set();
 
-            const groups = {};
-
-            filtered.forEach(row => {
-                const name = row[0].replace(/"/g, '');
-                const ruleStr = row[11] ? row[11].replace(/"/g, '') : ""; // L 欄
-                const note = row[12] ? row[12].replace(/"/g, '') : "";    // M 欄
-                const rules = ruleStr.split('/').map(s => s.trim());
-                let usedShops = new Set();
-
-                rules.forEach((rName, idx) => {
+            rules.forEach((rName, idx) => {
+                let sub = 0, detail = [];
+                
+                if (rName === "全部") {
+                    // 全部店家加總
+                    for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
+                        let v = parseInt(row[sIdx]) || 0; // 缺少或非數字視為 0
+                        if (v !== 0) { detail.push(`${sName}(${v})`); sub += v; }
+                    }
+                } else {
                     const targets = rName.split('+').map(t => t.trim());
-                    let subtotal = 0;
-                    let detailList = [];
-
-                    for (const [sName, sIdx] of Object.entries(SHOP_INDEX)) {
+                    for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
                         if (targets.some(t => sName.includes(t))) {
-                            let val = parseInt(row[sIdx]) || 0;
-                            if (val !== 0) {
-                                subtotal += val;
-                                detailList.push(`${sName}(${val})`);
-                            }
-                            usedShops.add(sName);
-                        }
-                    }
-
-                    if (subtotal !== 0) {
-                        if (!groups[rName]) groups[rName] = { colorIdx: idx, items: [] };
-                        groups[rName].items.push({ name, subtotal, detail: detailList.join(' '), note });
-                    }
-                });
-
-                // 剩餘店家歸類為其他
-                let otherSum = 0;
-                let otherDetail = [];
-                for (const [sName, sIdx] of Object.entries(SHOP_INDEX)) {
-                    if (!usedShops.has(sName)) {
-                        let val = parseInt(row[sIdx]) || 0;
-                        if (val !== 0) {
-                            otherSum += val;
-                            otherDetail.push(`${sName}(${val})`);
+                            let v = parseInt(row[sIdx]) || 0;
+                            if (v !== 0) { detail.push(`${sName}(${v})`); sub += v; }
+                            used.add(sName);
                         }
                     }
                 }
-                if (otherSum !== 0) {
-                    if (!groups["其他"]) groups["其他"] = { colorIdx: 'other', items: [] };
-                    groups["其他"].items.push({ name, subtotal: otherSum, detail: otherDetail.join(' '), note });
+
+                if (sub !== 0) {
+                    if (!finalGroups[rName]) finalGroups[rName] = { idx, items: [] };
+                    finalGroups[rName].items.push({ name, sub, detail: detail.join(' '), note });
                 }
             });
 
-            // 渲染 HTML
-            let html = "";
-            for (const gName in groups) {
-                const gData = groups[gName];
-                const colorClass = `color-${gData.colorIdx}`;
-                const gTotal = gData.items.reduce((a, b) => a + b.subtotal, 0);
-
-                html += `
-                    <div class="group-card ${colorClass}">
-                        <div class="group-header">
-                            <span>📍 ${gName}</span>
-                            <span class="total-badge">共 ${gTotal} 包</span>
-                        </div>
-                        <table>
-                `;
-
-                gData.items.forEach(item => {
-                    html += `
-                        <tr>
-                            <td>
-                                <span class="item-name">${item.name}</span>
-                                <span class="shop-detail">${item.detail}</span>
-                                ${item.note ? `<span class="note-tag">⚠️ ${item.note}</span>` : ''}
-                            </td>
-                            <td class="qty-cell">${item.subtotal}</td>
-                        </tr>
-                    `;
-                });
-                html += `</table></div>`;
+            // 如果有規則，處理沒被分配到的剩餘店家
+            if (ruleStr !== "") {
+                let oSum = 0, oDetail = [];
+                for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
+                    if (!used.has(sName)) {
+                        let v = parseInt(row[sIdx]) || 0;
+                        if (v !== 0) { oDetail.push(`${sName}(${v})`); oSum += v; }
+                    }
+                }
+                if (oSum !== 0) {
+                    if (!finalGroups["其他"]) finalGroups["其他"] = { idx: 99, items: [] };
+                    finalGroups["其他"].items.push({ name, sub: oSum, detail: oDetail.join(' '), note });
+                }
             }
-            area.innerHTML = html;
+        });
 
-        } catch (err) {
-            area.innerHTML = "<div style='text-align:center;'>連線失敗</div>";
+        for (const [gName, data] of Object.entries(finalGroups)) {
+            const colorClass = (gName === "其他" || gName === "全部") ? "c-none" : `c-${data.idx % 3}`;
+            const total = data.items.reduce((s, i) => s + i.sub, 0);
+            let html = `<div class="group-card ${colorClass}"><div class="group-header"><span>📍 ${gName}</span><span class="total-badge">共 ${total} 包</span></div><table>`;
+            data.items.forEach(item => {
+                html += `<tr><td><strong>${item.name}</strong><span class="shop-info">${item.detail}</span>${item.note && item.note !== "備註" ? `<span class="note-tag">⚠️ ${item.note}</span>` : ''}</td><td class="qty-cell">${item.sub}</td></tr>`;
+            });
+            area.innerHTML += html + "</table></div>";
         }
     }
 </script>
-
 </body>
 </html>
