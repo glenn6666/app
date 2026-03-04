@@ -22,7 +22,7 @@
 
 <div class="container">
     <h2 style="text-align:center">📋 出貨快速查詢</h2>
-    <input type="text" id="searchName" placeholder="輸入品項名稱 (如: 舒肥雞胸)">
+    <input type="text" id="searchName" placeholder="輸入品項名稱 (如: 洋芋片)">
     <button onclick="fetchData()">搜尋雲端資料</button>
 
     <div id="resultArea" style="display:none;">
@@ -36,10 +36,8 @@
 </div>
 
 <script>
-    // 針對 2PACX 格式 ID 的專用設定
     const SHEET_ID = '2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0'; 
-    // 注意：這裡的 URL 格式是針對「發佈到網路」的版本優化的
-    const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv`;
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=0`; // 強制指定第一張工作表
 
     async function fetchData() {
         const target = document.getElementById('searchName').value.trim();
@@ -49,35 +47,39 @@
             const resp = await fetch(SHEET_URL);
             const csvText = await resp.text();
             
-            // 將 CSV 轉換成陣列 (簡單處理)
-            const rows = csvText.split('\n').map(row => row.split(','));
+            // 解析 CSV 行
+            const rows = csvText.split('\r\n').map(row => {
+                // 處理可能包含逗號的引號內容
+                return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            });
             
-            // 尋找品項 (假設品項在第 2 欄，也就是索引 1)
-            const match = rows.find(r => r[1] && r[1].includes(target));
+            // 尋找品項：根據你的截圖，品項在第 1 欄 (索引 0)
+            const match = rows.find(r => r[0] && r[0].replace(/"/g, '').includes(target));
 
             if (match) {
-                render(match[1], match[2], match[4] || "");
+                // 傳遞參數：品項(0), 店家數量(1), 分組規則(3)
+                render(match[0], match[1], match[3] || "");
             } else {
-                alert("找不到包含「" + target + "」的品項");
+                alert("找不到包含「" + target + "」的品項，請檢查試算表第一欄。");
             }
         } catch (e) {
             console.error(e);
-            alert("資料抓取失敗！請確保試算表已『發佈到網路』並選擇『CSV』或『網頁』格式。");
+            alert("讀取失敗！請確保試算表『發佈到網路』。");
         }
     }
 
     function render(name, details, ruleStr) {
-        document.getElementById('displayTitle').innerText = name;
+        document.getElementById('displayTitle').innerText = name.replace(/"/g, '');
         const container = document.getElementById('groupsContainer');
         container.innerHTML = "";
 
-        // 解析店家資料
-        const allShops = details.replace(/"/g, '').split(';').map(s => {
+        // 解析店家：移除引號並根據逗號分割
+        const cleanDetails = details.replace(/"/g, '');
+        const allShops = cleanDetails.split(',').map(s => {
             const parts = s.trim().split(/\s+/);
             return { name: parts[0], qty: parseInt(parts[1]) || 0, used: false };
-        });
+        }).filter(s => s.name);
 
-        // 解析分組規則
         const groups = ruleStr ? ruleStr.replace(/"/g, '').split('/').map(g => g.trim()) : [];
         let totalSum = 0;
 
@@ -95,13 +97,12 @@
             if (gHtml) {
                 const box = document.createElement('div');
                 box.className = `group-box color-${index % 3}`;
-                box.innerHTML = `<strong>📍 組別：${groupRule}</strong>${gHtml}<div>小計: ${gSum}</div>`;
+                box.innerHTML = `<strong>📍 組別：${groupRule}</strong>${gHtml}<div style="text-align:right; font-weight:bold; color:#666; font-size:14px; margin-top:5px;">小計: ${gSum}</div>`;
                 container.appendChild(box);
                 totalSum += gSum;
             }
         });
 
-        // 處理未分組
         let rHtml = "";
         let rSum = 0;
         allShops.forEach(shop => {
@@ -113,7 +114,7 @@
         if (rHtml) {
             const box = document.createElement('div');
             box.className = "group-box";
-            box.innerHTML = `<strong>📍 店家清單</strong>${rHtml}<div>小計: ${rSum}</div>`;
+            box.innerHTML = `<strong>📍 ${groups.length > 0 ? '其他' : '店家清單'}</strong>${rHtml}<div style="text-align:right; font-weight:bold; color:#666; font-size:14px; margin-top:5px;">小計: ${rSum}</div>`;
             container.appendChild(box);
             totalSum += rSum;
         }
